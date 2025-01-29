@@ -107,11 +107,30 @@ kotlin {
 
             implementation(libs.bundles.ktor.server)
 
-
             implementation("org.jmdns:jmdns:3.6.0")
+
+
+            val osName = System.getProperty("os.name")
+            val targetOs = when {
+                osName.startsWith("Win") -> "windows"
+                osName.startsWith("Linux") -> "linux"
+                else -> error("Unsupported OS: $osName")
+            }
+
+            val osArch = System.getProperty("os.arch")
+            val targetArch = when (osArch) {
+                "x86_64", "amd64" -> "x64"
+                "aarch64" -> "arm64"
+                else -> error("Unsupported arch: $osArch")
+            }
+
+            val skikoVersion = "0.8.22.1"
+
+            implementation("org.jetbrains.skiko:skiko-awt-runtime-$targetOs-$targetArch:$skikoVersion")
         }
     }
 }
+
 
 android {
     namespace = "com.ricsdev.ucam"
