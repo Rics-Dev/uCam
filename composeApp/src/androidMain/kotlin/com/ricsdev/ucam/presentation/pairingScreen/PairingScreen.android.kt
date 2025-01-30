@@ -137,6 +137,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                                 useFrontCamera = it
                                 scope.launch {
                                     cameraManager.switchCamera(useFrontCamera)
+                                    client.sendCameraOrientation(if (useFrontCamera) "Front" else "Back")
                                 }
                             },
                             colors = SwitchDefaults.colors(

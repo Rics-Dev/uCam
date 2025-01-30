@@ -76,6 +76,12 @@ class KtorClient {
         session?.send(Frame.Binary(fin = true, data = frameBytes))
     }
 
+
+    suspend fun sendCameraOrientation(orientation: String) {
+        session?.send(Frame.Text("CameraOrientation:$orientation"))
+    }
+
+
     fun disconnect() {
         client.close()
         _connectionState.value = ConnectionState.Disconnected

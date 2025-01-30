@@ -38,6 +38,7 @@ import qrgenerator.qrkitpainter.getSelectedQrBall
 import qrgenerator.qrkitpainter.rememberQrKitPainter
 
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ricsdev.ucam.util.VirtualCamera
 
 @Composable
@@ -47,16 +48,22 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
     val connectionState by server.connectionState.collectAsState()
     val messages by server.messages.collectAsState()
     var currentFrame by remember { mutableStateOf<ImageBitmap?>(null) }
+    val cameraOrientation by server.cameraOrientation.collectAsStateWithLifecycle()
     val virtualCamera = remember { VirtualCamera() }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         server.start()
         try {
-            virtualCamera.start()
+            virtualCamera.start(cameraOrientation = cameraOrientation)
         } catch (e: Exception) {
             println("Failed to start virtual camera: ${e.message}")
         }
+    }
+
+    LaunchedEffect(cameraOrientation) {
+        virtualCamera.stop()
+        virtualCamera.start(cameraOrientation = cameraOrientation)
     }
 
     DisposableEffect(Unit) {
@@ -93,6 +100,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
         Text("Status: ${connectionState::class.simpleName}")
 
         if (connectionState is ConnectionState.Connected) {
+            //TODO: Fix for front camera
             currentFrame?.let { imageBitmap ->
                 Image(
                     bitmap = imageBitmap,
@@ -101,7 +109,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                         .fillMaxWidth()
                         .height(300.dp)
                         .graphicsLayer {
-                            rotationZ = 270f
+                            rotationZ = if (cameraOrientation == "Back") 270f else 90f
                             scaleX = -1f
                         }
                 )

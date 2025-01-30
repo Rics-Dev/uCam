@@ -22,6 +22,9 @@ open class KtorServer {
     private val _messages = MutableStateFlow<List<String>>(emptyList())
     val messages = _messages.asStateFlow()
 
+    private val _cameraOrientation = MutableStateFlow("Back")
+    val cameraOrientation = _cameraOrientation.asStateFlow()
+
     private val _cameraFrames = MutableSharedFlow<ByteArray>()
     val cameraFrames = _cameraFrames.asSharedFlow()
 
@@ -58,8 +61,13 @@ open class KtorServer {
                                 is Frame.Text -> {
                                     val text = frame.readText()
                                     println("Server received: $text")
-                                    _messages.update { it + text }
-                                    outgoing.send(Frame.Text("Server received: $text"))
+                                    if (text.startsWith("CameraOrientation:")) {
+                                        _cameraOrientation.value = text.removePrefix("CameraOrientation:")
+                                    } else {
+                                        println("Server received: $text")
+                                        _messages.update { it + text }
+                                        outgoing.send(Frame.Text("Server received: $text"))
+                                    }
                                 }
                                 is Frame.Binary -> {
                                     val frameBytes = frame.readBytes()
