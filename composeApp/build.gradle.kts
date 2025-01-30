@@ -12,13 +12,15 @@ plugins {
 }
 
 kotlin {
+    // Android configuration
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
+    // iOS configuration
     listOf(
         iosX64(),
         iosArm64(),
@@ -29,9 +31,11 @@ kotlin {
             isStatic = true
         }
     }
-    
+
+    // Desktop configuration
     jvm("desktop")
-    
+
+    // Web configuration
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         moduleName = "composeApp"
@@ -42,7 +46,6 @@ kotlin {
                 outputFileName = "composeApp.js"
                 devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
                     static = (static ?: mutableListOf()).apply {
-                        // Serve sources to debug inside browser
                         add(rootDirPath)
                         add(projectDirPath)
                     }
@@ -51,90 +54,92 @@ kotlin {
         }
         binaries.executable()
     }
-    
+
     sourceSets {
-        val desktopMain by getting
+        // Common dependencies for all platforms
+        val commonMain by getting {
+            dependencies {
+                // Compose dependencies
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.ui)
+                implementation(compose.components.resources)
+                implementation(compose.components.uiToolingPreview)
 
-        androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
+                // AndroidX dependencies
+                implementation(libs.androidx.lifecycle.viewmodel)
+                implementation(libs.androidx.lifecycle.runtime.compose)
+                implementation(libs.androidx.material3)
+                implementation(libs.androidx.materialIconsExtended)
 
-            implementation(libs.koin.android)
-            implementation(libs.koin.androidx.compose)
-            implementation(libs.ktor.client.cio)
-            implementation(libs.ktor.client.okhttp)
+                // Navigation and UI components
+                implementation(libs.adaptive)
+                implementation(libs.adaptive.layout)
+                implementation(libs.adaptive.navigation)
+                implementation(libs.material3.adaptive.navigation.suite)
+                implementation(libs.material3.window.size.classe)
+                implementation(libs.navigation.compose)
 
-
-            // CameraX core library using the camera2 implementation
-            implementation(libs.androidx.camera.camera2)
-            // If you want to additionally use the CameraX Lifecycle library
-            implementation(libs.androidx.camera.lifecycle)
-            // If you want to additionally use the CameraX VideoCapture library
-            implementation(libs.androidx.camera.video)
-            // If you want to additionally use the CameraX View class
-            implementation(libs.androidx.camera.view)
-            // If you want to additionally add CameraX ML Kit Vision Integration
-            implementation(libs.androidx.camera.mlkit.vision)
-            // If you want to additionally use the CameraX Extensions library
-            implementation(libs.androidx.camera.extensions)
-
-
-
-
-
-        }
-        commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodel)
-            implementation(libs.androidx.lifecycle.runtime.compose)
-
-            implementation("network.chaintech:qr-kit:3.0.6")
-
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            api(libs.koin.core)
-
-            implementation(libs.bundles.ktor)
-        }
-        desktopMain.dependencies {
-            implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinx.coroutines.swing)
-
-            implementation(libs.bundles.ktor.server)
-// https://mvnrepository.com/artifact/org.bytedeco/javacv-platform
-            implementation("org.bytedeco:javacv-platform:1.5.11")
-            implementation("com.github.sarxos:webcam-capture:0.3.12")
-
-            implementation("org.jmdns:jmdns:3.6.0")
-
-
-            val osName = System.getProperty("os.name")
-            val targetOs = when {
-                osName.startsWith("Win") -> "windows"
-                osName.startsWith("Linux") -> "linux"
-                else -> error("Unsupported OS: $osName")
+                // Core dependencies
+                implementation(libs.qr.kit)
+                implementation(libs.koin.compose)
+                implementation(libs.koin.compose.viewmodel)
+                api(libs.koin.core)
+                implementation(libs.bundles.ktor)
             }
+        }
 
-            val osArch = System.getProperty("os.arch")
-            val targetArch = when (osArch) {
-                "x86_64", "amd64" -> "x64"
-                "aarch64" -> "arm64"
-                else -> error("Unsupported arch: $osArch")
+        // Android-specific dependencies
+        val androidMain by getting {
+            dependencies {
+                implementation(compose.preview)
+                implementation(libs.androidx.activity.compose)
+                implementation(libs.koin.android)
+                implementation(libs.koin.androidx.compose)
+                implementation(libs.ktor.client.cio)
+                implementation(libs.ktor.client.okhttp)
+
+                // Camera dependencies
+                implementation(libs.androidx.camera.camera2)
+                implementation(libs.androidx.camera.lifecycle)
+                implementation(libs.androidx.camera.video)
+                implementation(libs.androidx.camera.view)
+                implementation(libs.androidx.camera.mlkit.vision)
+                implementation(libs.androidx.camera.extensions)
             }
+        }
 
-            val skikoVersion = "0.8.22.1"
+        // Desktop-specific dependencies
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.kotlinx.coroutines.swing)
+                implementation(libs.bundles.ktor.server)
+                implementation(libs.javacv.platform)
 
-            implementation("org.jetbrains.skiko:skiko-awt-runtime-$targetOs-$targetArch:$skikoVersion")
+                // Platform-specific Skiko configuration
+                val osName = System.getProperty("os.name")
+                val targetOs = when {
+                    osName.startsWith("Win") -> "windows"
+                    osName.startsWith("Linux") -> "linux"
+                    else -> error("Unsupported OS: $osName")
+                }
+
+                val osArch = System.getProperty("os.arch")
+                val targetArch = when (osArch) {
+                    "x86_64", "amd64" -> "x64"
+                    "aarch64" -> "arm64"
+                    else -> error("Unsupported arch: $osArch")
+                }
+
+                val skikoVersion = "0.8.22.1"
+                implementation("org.jetbrains.skiko:skiko-awt-runtime-$targetOs-$targetArch:$skikoVersion")
+            }
         }
     }
 }
 
-
+// Android configuration block
 android {
     namespace = "com.ricsdev.ucam"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -146,27 +151,32 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
 }
 
+// Root-level dependencies
 dependencies {
     implementation(libs.androidx.camera.lifecycle)
     debugImplementation(compose.uiTooling)
 }
 
+// Desktop application configuration
 compose.desktop {
     application {
         mainClass = "com.ricsdev.ucam.MainKt"

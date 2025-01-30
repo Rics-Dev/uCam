@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -38,10 +38,7 @@ import qrgenerator.qrkitpainter.getSelectedQrBall
 import qrgenerator.qrkitpainter.rememberQrKitPainter
 
 import androidx.compose.ui.graphics.ImageBitmap
-import com.ricsdev.ucam.util.KtorServerWithWebcam
 import com.ricsdev.ucam.util.VirtualCamera
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 @Composable
 actual fun PairingScreen(onPaired: (String) -> Unit) {

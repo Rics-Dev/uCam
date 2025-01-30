@@ -3,7 +3,6 @@ package com.ricsdev.ucam.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.ImageFormat
-import android.graphics.YuvImage
 import android.util.Log
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -18,24 +17,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
-
-
 class CameraManager(private val context: Context) {
     private var imageCapture: ImageCapture? = null
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private val mainExecutor = ContextCompat.getMainExecutor(context)
+    private var currentCameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
     suspend fun startCamera(
         previewView: PreviewView,
+        useFrontCamera: Boolean = false,
         onFrameCapture: (ByteArray) -> Unit
     ) {
+        currentCameraSelector = if (useFrontCamera) {
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        } else {
+            CameraSelector.DEFAULT_BACK_CAMERA
+        }
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProvider = withContext(Dispatchers.IO) {
             cameraProviderFuture.get()
         }
 
-        val preview = Preview.Builder().build()
+        val preview = Preview.Builder()
+            .build()
+
         val imageAnalyzer = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
@@ -43,8 +50,7 @@ class CameraManager(private val context: Context) {
                 setAnalyzer(mainExecutor) { imageProxy ->
                     try {
                         if (imageProxy.format == ImageFormat.YUV_420_888) {
-                            // Convert YUV_420_888 to RGB Bitmap
-                            val bitmap = imageProxy.toBitmap() // This handles the conversion
+                            val bitmap = imageProxy.toBitmap()
                             val out = ByteArrayOutputStream()
                             bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
                             val jpegBytes = out.toByteArray()
@@ -59,13 +65,12 @@ class CameraManager(private val context: Context) {
                     }
                 }
             }
-        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
         try {
             cameraProvider?.unbindAll()
             camera = cameraProvider?.bindToLifecycle(
                 context as LifecycleOwner,
-                cameraSelector,
+                currentCameraSelector,
                 preview,
                 imageAnalyzer
             )
@@ -75,8 +80,23 @@ class CameraManager(private val context: Context) {
         }
     }
 
+    suspend fun switchCamera(useFrontCamera: Boolean) {
+        camera?.cameraInfo?.let { info ->
+            val newCameraSelector = if (useFrontCamera) {
+                CameraSelector.DEFAULT_FRONT_CAMERA
+            } else {
+                CameraSelector.DEFAULT_BACK_CAMERA
+            }
+
+            if (currentCameraSelector != newCameraSelector) {
+                currentCameraSelector = newCameraSelector
+                cameraProvider?.unbindAll()
+                // Camera will be restarted with new selector in the next startCamera call
+            }
+        }
+    }
+
     fun stopCamera() {
         cameraProvider?.unbindAll()
     }
 }
-
