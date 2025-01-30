@@ -59,62 +59,6 @@ class CameraManager(private val context: Context) {
                     }
                 }
             }
-//        val imageAnalyzer = ImageAnalysis.Builder()
-//            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-//            .build()
-//            .apply {
-//                setAnalyzer(mainExecutor) { imageProxy ->
-//                    try {
-//                        // Check the image format using ImageProxy.getFormat()
-//                        if (imageProxy.format == ImageFormat.YUV_420_888) {
-//                            val planes = imageProxy.planes
-//                            val yBuffer = planes[0].buffer
-//                            val uBuffer = planes[1].buffer
-//                            val vBuffer = planes[2].buffer
-//
-//                            val ySize = yBuffer.remaining()
-//                            val uSize = uBuffer.remaining()
-//                            val vSize = vBuffer.remaining()
-//
-//                            val nv21 = ByteArray(ySize + uSize + vSize)
-//
-//                            // Copy Y plane
-//                            yBuffer.get(nv21, 0, ySize)
-//                            // Interleave U and V planes
-//                            var pos = ySize
-//                            // Copy U and V planes
-//                            uBuffer.get(nv21, ySize, uSize)
-//                            vBuffer.get(nv21, ySize + uSize, vSize)
-//
-//                            // Convert to JPEG
-//                            val yuvImage = YuvImage(
-//                                nv21,
-//                                ImageFormat.NV21,
-//                                imageProxy.width,
-//                                imageProxy.height,
-//                                null
-//                            )
-//
-//                            val out = ByteArrayOutputStream()
-//                            yuvImage.compressToJpeg(
-//                                android.graphics.Rect(0, 0, imageProxy.width, imageProxy.height),
-//                                80,
-//                                out
-//                            )
-//
-//                            val jpegBytes = out.toByteArray()
-//                            onFrameCapture(jpegBytes)
-//                        } else {
-//                            Log.w("CameraManager", "Unsupported image format: ${imageProxy.format}")
-//                        }
-//                    } catch (e: Exception) {
-//                        Log.e("CameraManager", "Error processing image", e)
-//                    } finally {
-//                        imageProxy.close()
-//                    }
-//                }
-//            }
-
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
         try {

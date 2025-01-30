@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,26 +38,34 @@ import qrgenerator.qrkitpainter.getSelectedQrBall
 import qrgenerator.qrkitpainter.rememberQrKitPainter
 
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import org.jetbrains.skia.Bitmap
-import org.jetbrains.skia.ColorAlphaType
-import org.jetbrains.skia.ColorType
-import org.jetbrains.skia.ImageInfo
+import com.ricsdev.ucam.util.KtorServerWithWebcam
+import com.ricsdev.ucam.util.VirtualCamera
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 @Composable
 actual fun PairingScreen(onPaired: (String) -> Unit) {
     val server = remember { KtorServer() }
+//    val server = remember { KtorServerWithWebcam() }
     val connectionState by server.connectionState.collectAsState()
     val messages by server.messages.collectAsState()
     var currentFrame by remember { mutableStateOf<ImageBitmap?>(null) }
+    val virtualCamera = remember { VirtualCamera() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         server.start()
+        try {
+            virtualCamera.start()
+        } catch (e: Exception) {
+            println("Failed to start virtual camera: ${e.message}")
+        }
     }
 
     DisposableEffect(Unit) {
         onDispose {
             server.stop()
+            virtualCamera.stop()
         }
     }
 
@@ -95,7 +104,8 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                         .fillMaxWidth()
                         .height(300.dp)
                         .graphicsLayer {
-                            rotationZ = 90f
+                            rotationZ = 270f
+                            scaleX = -1f
                         }
                 )
             }
@@ -105,6 +115,10 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
             server.cameraFrames.collect { frameBytes ->
                 try {
                     currentFrame = convertJPEGToImageBitmap(frameBytes)
+
+                    if (virtualCamera.isActive()) {
+                        virtualCamera.writeFrame(frameBytes)
+                    }
                 } catch (e: Exception) {
                     println("Error processing frame: ${e.message}")
                 }
@@ -125,7 +139,3 @@ fun convertJPEGToImageBitmap(jpegBytes: ByteArray): ImageBitmap {
     // Convert the Skia Image to Compose's ImageBitmap
     return image.toComposeImageBitmap()
 }
-//fun convertJPEGToImageBitmap(jpegBytes: ByteArray): ImageBitmap {
-//    val image = Image.makeFromEncoded(jpegBytes)
-//    return image.toComposeImageBitmap()
-//}

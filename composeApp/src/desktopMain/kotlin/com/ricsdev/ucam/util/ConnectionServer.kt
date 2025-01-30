@@ -15,7 +15,7 @@ import java.net.NetworkInterface
 import kotlin.time.Duration
 
 
-class KtorServer {
+open class KtorServer {
     private var server: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState = _connectionState.asStateFlow()
@@ -25,27 +25,28 @@ class KtorServer {
     private val _cameraFrames = MutableSharedFlow<ByteArray>()
     val cameraFrames = _cameraFrames.asSharedFlow()
 
+
     fun getServerUrl(): String {
         val ipAddress = NetworkInterface.getNetworkInterfaces().toList()
             .flatMap { it.inetAddresses.toList() }
             .firstOrNull { !it.isLoopbackAddress && it.isSiteLocalAddress }
             ?.hostAddress ?: "127.0.0.1"
-        // Important: Use 'ws://' instead of 'http://' for WebSocket connections
         return "ws://$ipAddress:${ConnectionConfig.DEFAULT_PORT}${ConnectionConfig.WS_PATH}"
     }
 
-    fun start() {
+    open fun start() {
         val serverUrl = getServerUrl()
         println("Starting server at $serverUrl")
+
+
+
 
         server = embeddedServer(Netty, port = ConnectionConfig.DEFAULT_PORT) {
             install(WebSockets) {
                 pingPeriod = Duration.parseOrNull("PT30S") ?: Duration.ZERO
-                pingPeriod = Duration.parseOrNull("PT30S") ?: Duration.ZERO
                 maxFrameSize = Long.MAX_VALUE
                 masking = false
             }
-
             routing {
                 webSocket(ConnectionConfig.WS_PATH) {
                     println("WebSocket connection established")
@@ -61,7 +62,9 @@ class KtorServer {
                                     outgoing.send(Frame.Text("Server received: $text"))
                                 }
                                 is Frame.Binary -> {
-                                    _cameraFrames.emit(frame.readBytes())
+                                    val frameBytes = frame.readBytes()
+                                    _cameraFrames.emit(frameBytes)
+
                                 }
                                 else -> { /* Handle other frame types if needed */ }
                             }
@@ -78,10 +81,13 @@ class KtorServer {
         }.start(wait = false)
     }
 
-    fun stop() {
+    open fun stop() {
         server?.stop(1000, 2000)
         server = null
         _messages.value = emptyList()
         _connectionState.value = ConnectionState.Disconnected
+
+
+
     }
 }

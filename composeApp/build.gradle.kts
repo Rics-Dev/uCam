@@ -106,6 +106,9 @@ kotlin {
             implementation(libs.kotlinx.coroutines.swing)
 
             implementation(libs.bundles.ktor.server)
+// https://mvnrepository.com/artifact/org.bytedeco/javacv-platform
+            implementation("org.bytedeco:javacv-platform:1.5.11")
+            implementation("com.github.sarxos:webcam-capture:0.3.12")
 
             implementation("org.jmdns:jmdns:3.6.0")
 
