@@ -1,5 +1,7 @@
 package com.ricsdev.ucam.presentation.pairingScreen
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Canvas
 import androidx.lifecycle.ViewModel
 import com.ricsdev.ucam.util.AppLogger
 import com.ricsdev.ucam.util.KtorServer
@@ -7,6 +9,7 @@ import com.ricsdev.ucam.util.VirtualCamera
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import org.jetbrains.skia.Image
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
