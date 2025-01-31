@@ -6,11 +6,18 @@ import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class KtorClient {
-    private val client = HttpClient(CIO) {
+    private var client = createClient()
+    private fun createClient() = HttpClient(CIO) {
         install(WebSockets) {
             pingInterval = kotlin.time.Duration.parse("PT30S")
             maxFrameSize = Long.MAX_VALUE
@@ -21,8 +28,38 @@ class KtorClient {
     val connectionState = _connectionState.asStateFlow()
 
     private var session: DefaultClientWebSocketSession? = null
+    private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    suspend fun connect(serverUrl: String) {
+
+    suspend fun disconnect() {
+        try {
+            session?.close()
+            session = null
+            scope.cancel()
+            client.close()
+            // Create new instances for next connection
+            client = createClient()
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            _connectionState.value = ConnectionState.Disconnected
+        } catch (e: Exception) {
+            Log.e("KtorClient", "Error during disconnect: ${e.message}", e)
+        }
+    }
+
+    fun connect(serverUrl: String) {
+        if (_connectionState.value is ConnectionState.Connected) {
+            Log.d("KtorClient", "Already connected, disconnecting first")
+            scope.launch {
+                disconnect()
+                delay(1000) // Give some time for cleanup
+                initiateConnection(serverUrl)
+            }
+        } else {
+            initiateConnection(serverUrl)
+        }
+    }
+
+    private fun initiateConnection(serverUrl: String) {
         try {
             Log.d("KtorClient", "Attempting to connect to: $serverUrl")
 
@@ -30,35 +67,37 @@ class KtorClient {
                 serverUrl.replace("http://", "ws://")
             } else serverUrl
 
-            client.webSocket(wsUrl) {
-                session = this
-                Log.d("KtorClient", "WebSocket connection established")
-                _connectionState.value = ConnectionState.Connected
+            scope.launch {
+                client.webSocket(wsUrl) {
+                    session = this
+               Log.d("KtorClient", "WebSocket connection established")
+                    _connectionState.value = ConnectionState.Connected
 
-                try {
-                    send(Frame.Text("Hello from Android!"))
-                    Log.d("KtorClient", "Sent test message")
+                    try {
+                        send(Frame.Text("Hello from Android!"))
+                        Log.d("KtorClient", "Sent test message")
 
-                    for (frame in incoming) {
-                        when (frame) {
-                            is Frame.Text -> {
-                                val text = frame.readText()
-                                Log.d("KtorClient", "Received from server: $text")
+                        for (frame in incoming) {
+                            when (frame) {
+                                is Frame.Text -> {
+                                    val text = frame.readText()
+                                    Log.d("KtorClient", "Received from server: $text")
+                                }
+                                is Frame.Close -> {
+                                    Log.d("KtorClient", "Received close frame")
+                                    break
+                                }
+                                is Frame.Ping -> send(Frame.Pong(frame.data))
+                                else -> { /* Handle other frame types if needed */ }
                             }
-                            is Frame.Close -> {
-                                Log.d("KtorClient", "Received close frame")
-                                break
-                            }
-                            is Frame.Ping -> send(Frame.Pong(frame.data))
-                            else -> { /* Handle other frame types if needed */ }
                         }
+                    } catch (e: Exception) {
+                        Log.e("KtorClient", "Error in WebSocket connection: ${e.message}", e)
+                        _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
+                    } finally {
+                        Log.d("KtorClient", "WebSocket connection closed")
+                        _connectionState.value = ConnectionState.Disconnected
                     }
-                } catch (e: Exception) {
-                    Log.e("KtorClient", "Error in WebSocket connection: ${e.message}", e)
-                    _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
-                } finally {
-                    Log.d("KtorClient", "WebSocket connection closed")
-                    _connectionState.value = ConnectionState.Disconnected
                 }
             }
         } catch (e: Exception) {
@@ -67,23 +106,26 @@ class KtorClient {
         }
     }
 
-    suspend fun sendMessage(message: String) {
-        session?.send(Frame.Text(message))
-    }
 
+
+//    suspend fun sendMessage(message: String) {
+//        session?.send(Frame.Text(message))
+//    }
 
     suspend fun sendCameraFrame(frameBytes: ByteArray) {
         session?.send(Frame.Binary(fin = true, data = frameBytes))
     }
 
-
-    suspend fun sendCameraOrientation(orientation: String) {
-        session?.send(Frame.Text("CameraOrientation:$orientation"))
+    suspend fun sendCameraMode(orientation: String) {
+        session?.send(Frame.Text("CameraMode:$orientation"))
     }
 
-
-    fun disconnect() {
-        client.close()
-        _connectionState.value = ConnectionState.Disconnected
+    suspend fun sendCameraRotation(rotation: String) {
+        session?.send(Frame.Text("CameraRotation:$rotation"))
     }
+
+    suspend fun sendCameraFlip(direction: String) {
+        session?.send(Frame.Text("CameraFlip:$direction"))
+    }
+
 }

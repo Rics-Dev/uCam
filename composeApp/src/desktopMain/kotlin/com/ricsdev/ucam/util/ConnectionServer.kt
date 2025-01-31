@@ -22,8 +22,19 @@ open class KtorServer {
     private val _messages = MutableStateFlow<List<String>>(emptyList())
     val messages = _messages.asStateFlow()
 
-    private val _cameraOrientation = MutableStateFlow("Back")
-    val cameraOrientation = _cameraOrientation.asStateFlow()
+    private val _cameraMode = MutableStateFlow("Back")
+    val cameraMode = _cameraMode.asStateFlow()
+
+    private val _cameraRotation = MutableStateFlow(0f)
+    val cameraRotation = _cameraRotation.asStateFlow()
+
+
+    private val _flipHorizontal = MutableStateFlow(false)
+    val flipHorizontal = _flipHorizontal.asStateFlow()
+
+    private val _flipVertical = MutableStateFlow(true)
+    val flipVertical = _flipVertical.asStateFlow()
+
 
     private val _cameraFrames = MutableSharedFlow<ByteArray>()
     val cameraFrames = _cameraFrames.asSharedFlow()
@@ -61,12 +72,27 @@ open class KtorServer {
                                 is Frame.Text -> {
                                     val text = frame.readText()
                                     println("Server received: $text")
-                                    if (text.startsWith("CameraOrientation:")) {
-                                        _cameraOrientation.value = text.removePrefix("CameraOrientation:")
-                                    } else {
-                                        println("Server received: $text")
-                                        _messages.update { it + text }
-                                        outgoing.send(Frame.Text("Server received: $text"))
+                                    when {
+                                        text.startsWith("CameraMode:") -> {
+                                            _cameraMode.value = text.removePrefix("CameraMode:")
+                                        }
+
+                                        text.startsWith("CameraRotation:") -> {
+                                            _cameraRotation.value =
+                                                text.removePrefix("CameraRotation:").toFloat()
+                                        }
+
+                                        text.startsWith("CameraFlip:horizontal") -> {
+                                            _flipHorizontal.value = !_flipHorizontal.value
+                                        }
+                                        text.startsWith("CameraFlip:vertical") -> {
+                                            _flipVertical.value = !_flipVertical.value
+                                        }
+
+                                        else -> {
+                                            _messages.update { it + text }
+                                            outgoing.send(Frame.Text("Server received: $text"))
+                                        }
                                     }
                                 }
                                 is Frame.Binary -> {
@@ -89,7 +115,7 @@ open class KtorServer {
         }.start(wait = false)
     }
 
-    open fun stop() {
+     fun stop() {
         server?.stop(1000, 2000)
         server = null
         _messages.value = emptyList()

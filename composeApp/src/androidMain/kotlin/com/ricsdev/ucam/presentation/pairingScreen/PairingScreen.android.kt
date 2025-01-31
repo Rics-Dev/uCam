@@ -30,6 +30,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,6 +63,8 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
     var port by remember { mutableStateOf(ConnectionConfig.DEFAULT_PORT.toString()) }
     var useQrScanner by remember { mutableStateOf(false) }
     var useFrontCamera by remember { mutableStateOf(false) }
+    var rotationAngle by remember { mutableFloatStateOf(0f) }
+    var previewView by remember { mutableStateOf<PreviewView?>(null) }
 
     val context = LocalContext.current
     val cameraManager = remember { CameraManager(context) }
@@ -137,7 +141,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                                 useFrontCamera = it
                                 scope.launch {
                                     cameraManager.switchCamera(useFrontCamera)
-                                    client.sendCameraOrientation(if (useFrontCamera) "Front" else "Back")
+                                    client.sendCameraMode(if (useFrontCamera) "Front" else "Back")
                                 }
                             },
                             colors = SwitchDefaults.colors(
@@ -232,7 +236,6 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
         }
 
         if (connectionState is ConnectionState.Connected) {
-            var previewView by remember { mutableStateOf<PreviewView?>(null) }
 
             Card(
                 modifier = Modifier
@@ -263,6 +266,40 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                         scope.launch {
                             client.sendCameraFrame(frameBytes)
                         }
+                    }
+                }
+
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(onClick = {
+                        scope.launch {
+                            rotationAngle += 90f
+                            cameraManager.rotateCamera(view, rotationAngle)
+                            client.sendCameraRotation(rotationAngle.toString())
+                        }
+                    }) {
+                        Text("Rotate Camera")
+                    }
+
+                    Button(onClick = {
+                        scope.launch {
+                            cameraManager.flipHorizontal(view)
+                            client.sendCameraFlip("horizontal")
+                        }
+                    }) {
+                        Text("Flip Horizontal")
+                    }
+
+                    Button(onClick = {
+                        scope.launch {
+                            cameraManager.flipVertical(view)
+                            client.sendCameraFlip("vertical")
+                        }
+                    }) {
+                        Text("Flip Vertical")
                     }
                 }
             }

@@ -16,7 +16,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,27 +43,28 @@ import com.ricsdev.ucam.util.VirtualCamera
 @Composable
 actual fun PairingScreen(onPaired: (String) -> Unit) {
     val server = remember { KtorServer() }
-//    val server = remember { KtorServerWithWebcam() }
     val connectionState by server.connectionState.collectAsState()
-    val messages by server.messages.collectAsState()
     var currentFrame by remember { mutableStateOf<ImageBitmap?>(null) }
-    val cameraOrientation by server.cameraOrientation.collectAsStateWithLifecycle()
+    val cameraMode by server.cameraMode.collectAsStateWithLifecycle()
+    val cameraRotation by server.cameraRotation.collectAsStateWithLifecycle()
+    val flipHorizontal by server.flipHorizontal.collectAsStateWithLifecycle()
+    val flipVertical by server.flipVertical.collectAsStateWithLifecycle()
     val virtualCamera = remember { VirtualCamera() }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         server.start()
         try {
-            virtualCamera.start(cameraOrientation = cameraOrientation)
+            virtualCamera.start(cameraMode = cameraMode)
         } catch (e: Exception) {
             println("Failed to start virtual camera: ${e.message}")
         }
     }
 
-    LaunchedEffect(cameraOrientation) {
-        virtualCamera.stop()
-        virtualCamera.start(cameraOrientation = cameraOrientation)
+    LaunchedEffect(cameraMode) {
+        virtualCamera.changeOrientation(cameraMode)
     }
+
+
 
     DisposableEffect(Unit) {
         onDispose {
@@ -100,17 +100,17 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
         Text("Status: ${connectionState::class.simpleName}")
 
         if (connectionState is ConnectionState.Connected) {
-            //TODO: Fix for front camera
             currentFrame?.let { imageBitmap ->
                 Image(
                     bitmap = imageBitmap,
                     contentDescription = "Camera Feed",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp)
+                        .height(500.dp)
                         .graphicsLayer {
-                            rotationZ = if (cameraOrientation == "Back") 270f else 90f
-                            scaleX = -1f
+                            rotationZ = if (cameraMode == "Back") cameraRotation + 270f else cameraRotation + 90f
+                            scaleX = if (flipVertical) -1f else 1f
+                            scaleY = if (flipHorizontal) -1f else 1f
                         }
                 )
             }
@@ -141,6 +141,6 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
 fun convertJPEGToImageBitmap(jpegBytes: ByteArray): ImageBitmap {
     // Use Skia's Image class to decode the JPEG bytes
     val image = Image.makeFromEncoded(jpegBytes)
-    // Convert the Skia Image to Compose's ImageBitmap
+    // Convert the Skia Image to Composes ImageBitmap
     return image.toComposeImageBitmap()
 }

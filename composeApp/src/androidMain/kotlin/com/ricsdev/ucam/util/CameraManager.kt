@@ -23,6 +23,7 @@ class CameraManager(private val context: Context) {
     private var cameraProvider: ProcessCameraProvider? = null
     private val mainExecutor = ContextCompat.getMainExecutor(context)
     private var currentCameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private var currentRotation = 0f
 
     suspend fun startCamera(
         previewView: PreviewView,
@@ -80,8 +81,8 @@ class CameraManager(private val context: Context) {
         }
     }
 
-    suspend fun switchCamera(useFrontCamera: Boolean) {
-        camera?.cameraInfo?.let { info ->
+    fun switchCamera(useFrontCamera: Boolean) {
+        camera?.cameraInfo?.let {
             val newCameraSelector = if (useFrontCamera) {
                 CameraSelector.DEFAULT_FRONT_CAMERA
             } else {
@@ -94,6 +95,19 @@ class CameraManager(private val context: Context) {
                 // Camera will be restarted with new selector in the next startCamera call
             }
         }
+    }
+
+    fun rotateCamera(previewView: PreviewView, rotation: Float) {
+        currentRotation = (currentRotation + rotation) % 360
+        previewView.rotation = currentRotation
+    }
+
+    fun flipHorizontal(previewView: PreviewView) {
+        previewView.scaleX = if (previewView.scaleX == 1f) -1f else 1f
+    }
+
+    fun flipVertical(previewView: PreviewView) {
+        previewView.scaleY = if (previewView.scaleY == 1f) -1f else 1f
     }
 
     fun stopCamera() {
