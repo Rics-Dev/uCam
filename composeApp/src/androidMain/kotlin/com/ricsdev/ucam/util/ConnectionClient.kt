@@ -14,6 +14,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.net.URI
+import java.net.URISyntaxException
 
 class KtorClient {
     private var client = createClient()
@@ -47,6 +49,12 @@ class KtorClient {
     }
 
     fun connect(serverUrl: String) {
+        if (!isValidUrl(serverUrl)) {
+            Log.e("KtorClient", "Invalid URL: $serverUrl")
+            _connectionState.value = ConnectionState.Error("Invalid URL: $serverUrl")
+            return
+        }
+
         if (_connectionState.value is ConnectionState.Connected) {
             Log.d("KtorClient", "Already connected, disconnecting first")
             scope.launch {
@@ -68,45 +76,76 @@ class KtorClient {
             } else serverUrl
 
             scope.launch {
-                client.webSocket(wsUrl) {
-                    session = this
-               Log.d("KtorClient", "WebSocket connection established")
-                    _connectionState.value = ConnectionState.Connected
+                try {
+                    client.webSocket(wsUrl) {
+                        session = this
+                        Log.d("KtorClient", "WebSocket connection established")
+                        _connectionState.value = ConnectionState.Connected
 
-                    try {
-                        send(Frame.Text("Hello from Android!"))
-                        Log.d("KtorClient", "Sent test message")
+                        try {
+                            send(Frame.Text("Hello from Android!"))
+                            Log.d("KtorClient", "Sent test message")
 
-                        for (frame in incoming) {
-                            when (frame) {
-                                is Frame.Text -> {
-                                    val text = frame.readText()
-                                    Log.d("KtorClient", "Received from server: $text")
+                            for (frame in incoming) {
+                                when (frame) {
+                                    is Frame.Text -> {
+                                        val text = frame.readText()
+                                        Log.d("KtorClient", "Received from server: $text")
+                                    }
+                                    is Frame.Close -> {
+                                        Log.d("KtorClient", "Received close frame")
+                                        break
+                                    }
+                                    is Frame.Ping -> send(Frame.Pong(frame.data))
+                                    else -> { /* Handle other frame types if needed */ }
                                 }
-                                is Frame.Close -> {
-                                    Log.d("KtorClient", "Received close frame")
-                                    break
-                                }
-                                is Frame.Ping -> send(Frame.Pong(frame.data))
-                                else -> { /* Handle other frame types if needed */ }
                             }
+                        } catch (e: Exception) {
+                            Log.e("KtorClient", "Error in WebSocket connection: ${e.message}", e)
+                            _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
                         }
-                    } catch (e: Exception) {
-                        Log.e("KtorClient", "Error in WebSocket connection: ${e.message}", e)
-                        _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
-                    } finally {
-                        Log.d("KtorClient", "WebSocket connection closed")
-                        _connectionState.value = ConnectionState.Disconnected
                     }
+                } catch (e: java.nio.channels.UnresolvedAddressException) {
+                    Log.e("KtorClient", "Failed to resolve host address: ${e.message}")
+                    _connectionState.value = ConnectionState.Error("Cannot connect to host: Host not found or unreachable")
+                } catch (e: java.net.ConnectException) {
+                    Log.e("KtorClient", "Connection refused: ${e.message}")
+                    _connectionState.value = ConnectionState.Error("Cannot connect to server: Connection refused")
+                } catch (e: Exception) {
+                    Log.e("KtorClient", "Failed to establish WebSocket connection: ${e.message}", e)
+                    _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
+                } finally {
+                    Log.d("KtorClient", "WebSocket connection closed")
+                    _connectionState.value = ConnectionState.Disconnected
                 }
             }
         } catch (e: Exception) {
-            Log.e("KtorClient", "Failed to establish WebSocket connection: ${e.message}", e)
+            Log.e("KtorClient", "Failed to start connection attempt: ${e.message}", e)
             _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
         }
     }
 
-
+    private fun isValidUrl(url: String): Boolean {
+        return try {
+            val uri = URI(url)
+            if (uri.scheme != "ws" && uri.scheme != "wss") {
+                Log.e("KtorClient", "Invalid scheme: ${uri.scheme}")
+                return false
+            }
+            if (uri.host == null) {
+                Log.e("KtorClient", "No host specified")
+                return false
+            }
+            if (uri.port == -1) {
+                Log.e("KtorClient", "No port specified")
+                return false
+            }
+            true
+        } catch (e: URISyntaxException) {
+            Log.e("KtorClient", "Invalid URL format: ${e.message}")
+            false
+        }
+    }
 
 //    suspend fun sendMessage(message: String) {
 //        session?.send(Frame.Text(message))

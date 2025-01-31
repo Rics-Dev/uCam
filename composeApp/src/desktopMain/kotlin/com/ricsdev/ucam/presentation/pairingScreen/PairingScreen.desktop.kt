@@ -60,8 +60,20 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
         }
     }
 
-    LaunchedEffect(cameraMode, flipHorizontal, flipVertical, cameraRotation) {
-        virtualCamera.changeOrientation(cameraMode,  flipHorizontal, flipVertical, cameraRotation)
+    LaunchedEffect(cameraMode) {
+        virtualCamera.changeOrientation(cameraMode, flipHorizontal, flipVertical, cameraRotation)
+    }
+
+    LaunchedEffect(flipHorizontal) {
+        virtualCamera.changeOrientation(cameraMode, flipHorizontal, flipVertical, cameraRotation)
+    }
+
+    LaunchedEffect(flipVertical) {
+        virtualCamera.changeOrientation(cameraMode, flipHorizontal, flipVertical, cameraRotation)
+    }
+
+    LaunchedEffect(cameraRotation) {
+        virtualCamera.changeOrientation(cameraMode, flipHorizontal, flipVertical, cameraRotation)
     }
 
 
