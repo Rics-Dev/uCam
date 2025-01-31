@@ -62,6 +62,7 @@ class PairingViewModel(
         }
     }
 
+
     fun updateCameraOrientation() {
         viewModelScope.launch {
             virtualCamera.changeOrientation(

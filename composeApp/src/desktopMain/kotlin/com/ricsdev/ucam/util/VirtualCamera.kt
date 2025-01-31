@@ -15,6 +15,7 @@ class VirtualCamera {
     private val maxRetries = 3
     private val retryDelayMs = 500L // Reduced delay
 
+
     suspend fun start(
         devicePath: String = "/dev/video5",
         cameraMode: String = "Back",

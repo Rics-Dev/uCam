@@ -9,20 +9,28 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import java.net.URI
 import java.net.URISyntaxException
 
-class KtorClient {
+class KtorClient(private val cameraManager: CameraManager) {
     private var client = createClient()
     private fun createClient() = HttpClient(CIO) {
         install(WebSockets) {
             pingInterval = kotlin.time.Duration.parse("PT30S")
             maxFrameSize = Long.MAX_VALUE
+            extensions {
+                install(WebSocketDeflateExtension) {
+                    compressionLevel = 6 // Balance between compression and CPU usage
+                    compressIf { frame -> frame is Frame.Text && frame.readText().length > 1024 }
+                }
+            }
         }
     }
 
@@ -31,6 +39,9 @@ class KtorClient {
 
     private var session: DefaultClientWebSocketSession? = null
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var lastFrameSentTime = 0L
+
+
 
 
     suspend fun disconnect() {
@@ -92,6 +103,11 @@ class KtorClient {
                                         val text = frame.readText()
                                         Log.d("KtorClient", "Received from server: $text")
                                     }
+                                    is Frame.Binary -> {
+                                        // Calculate round-trip time when receiving frame acknowledgment
+                                        val latency = System.currentTimeMillis() - lastFrameSentTime
+                                        cameraManager.updateNetworkLatency(latency)
+                                    }
                                     is Frame.Close -> {
                                         Log.d("KtorClient", "Received close frame")
                                         break
@@ -152,8 +168,24 @@ class KtorClient {
 //    }
 
     suspend fun sendCameraFrame(frameBytes: ByteArray) {
-        session?.send(Frame.Binary(fin = true, data = frameBytes))
+        lastFrameSentTime = System.currentTimeMillis()
+        try {
+            withTimeout(100) { // Add timeout to prevent blocking
+                session?.send(Frame.Binary(fin = true, data = frameBytes))
+            }
+        } catch (e: TimeoutCancellationException) {
+            Log.w("KtorClient", "Frame send timed out, skipping frame")
+        }
     }
+
+//    suspend fun sendCameraFrame(frameBytes: ByteArray) {
+//        lastFrameSentTime = System.currentTimeMillis()
+//        session?.send(Frame.Binary(fin = true, data = frameBytes))
+//    }
+
+//    suspend fun sendCameraFrame(frameBytes: ByteArray) {
+//        session?.send(Frame.Binary(fin = true, data = frameBytes))
+//    }
 
     suspend fun sendCameraMode(orientation: String) {
         session?.send(Frame.Text("CameraMode:$orientation"))

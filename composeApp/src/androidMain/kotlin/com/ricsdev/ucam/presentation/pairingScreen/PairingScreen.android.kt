@@ -28,7 +28,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -38,36 +37,35 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ricsdev.ucam.util.CameraManager
 import com.ricsdev.ucam.util.ConnectionConfig
 import com.ricsdev.ucam.util.ConnectionState
-import com.ricsdev.ucam.util.KtorClient
 import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
 import qrscanner.CameraLens
 import qrscanner.OverlayShape
 import qrscanner.QrScanner
 
 
 @Composable
-actual fun PairingScreen(onPaired: (String) -> Unit) {
-    val client = remember { KtorClient() }
-    val connectionState by client.connectionState.collectAsState()
-    val scope = rememberCoroutineScope()
-    var ipAddress by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf(ConnectionConfig.DEFAULT_PORT.toString()) }
-    var useQrScanner by remember { mutableStateOf(false) }
-    var useFrontCamera by remember { mutableStateOf(false) }
+actual fun PairingScreen(onPaired: (String) -> Unit){
+
+    val viewModel: PairingViewModel = koinViewModel()
+    val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
+    val useQrScanner by viewModel.useQrScanner.collectAsStateWithLifecycle()
+    val useFrontCamera by viewModel.useFrontCamera.collectAsStateWithLifecycle()
+    val ipAddress by viewModel.ipAddress.collectAsStateWithLifecycle()
+    val port by viewModel.port.collectAsStateWithLifecycle()
     var rotationAngle by remember { mutableFloatStateOf(0f) }
     var previewView by remember { mutableStateOf<PreviewView?>(null) }
 
-    val context = LocalContext.current
-    val cameraManager = remember { CameraManager(context) }
 
     Column(
         modifier = Modifier
@@ -109,7 +107,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                     }
                     Switch(
                         checked = useQrScanner,
-                        onCheckedChange = { useQrScanner = it },
+                        onCheckedChange = { viewModel.setUseQrScanner(it) },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = MaterialTheme.colorScheme.primary
                         )
@@ -137,13 +135,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                         }
                         Switch(
                             checked = useFrontCamera,
-                            onCheckedChange = {
-                                useFrontCamera = it
-                                scope.launch {
-                                    cameraManager.switchCamera(useFrontCamera)
-                                    client.sendCameraMode(if (useFrontCamera) "Front" else "Back")
-                                }
-                            },
+                            onCheckedChange = { viewModel.setUseFrontCamera(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.primary
                             )
@@ -161,12 +153,10 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                         val url = result.replace("http://", "ws://")
                         val parts = url.split(":")
                         if (parts.size == 3) {
-                            ipAddress = parts[1].substring(2)
-                            port = parts[2].split("/")[0]
+                            viewModel.setIpAddress(parts[1].substring(2))
+                            viewModel.setPort(parts[2].split("/")[0])
                         }
-                        scope.launch {
-                            client.connect(url)
-                        }
+                        viewModel.connect(url)
                     }
                 },
                 onFailure = { /* Handle error */ },
@@ -188,7 +178,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                 ) {
                     OutlinedTextField(
                         value = ipAddress,
-                        onValueChange = { ipAddress = it },
+                        onValueChange = { viewModel.setIpAddress(it) },
                         label = { Text("IP Address") },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -197,7 +187,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
 
                     OutlinedTextField(
                         value = port,
-                        onValueChange = { port = it },
+                        onValueChange = { viewModel.setPort(it) },
                         label = { Text("Port") },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -211,9 +201,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                         Button(
                             onClick = {
                                 val serverUrl = "ws://$ipAddress:$port${ConnectionConfig.WS_PATH}"
-                                scope.launch {
-                                    client.connect(serverUrl)
-                                }
+                                viewModel.connect(serverUrl)
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -221,11 +209,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
-                            onClick = {
-                                scope.launch {
-                                    client.disconnect()
-                                }
-                            },
+                            onClick = { viewModel.disconnect() },
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Disconnect")
@@ -236,7 +220,6 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
         }
 
         if (connectionState is ConnectionState.Connected) {
-
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -258,14 +241,11 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
             }
 
             previewView?.let { view ->
-                LaunchedEffect(view, useFrontCamera) {
-                    cameraManager.startCamera(
-                        view,
-                        useFrontCamera
-                    ) { frameBytes ->
-                        scope.launch {
-                            client.sendCameraFrame(frameBytes)
-                        }
+                val lifecycleOwner = LocalLifecycleOwner.current
+                DisposableEffect(view, useFrontCamera) {
+                    viewModel.startCamera(view, useFrontCamera, lifecycleOwner)
+                    onDispose {
+                        viewModel.stopCamera()
                     }
                 }
 
@@ -275,40 +255,32 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Button(onClick = {
-                        scope.launch {
-                            rotationAngle += 90f
-                            cameraManager.rotateCamera(view, rotationAngle)
-                            client.sendCameraRotation(rotationAngle.toString())
-                        }
+                        rotationAngle += 90f
+                        viewModel.rotateCamera(view, rotationAngle)
                     }) {
                         Text("Rotate Camera")
                     }
 
                     Button(onClick = {
-                        scope.launch {
-                            cameraManager.flipHorizontal(view)
-                            client.sendCameraFlip("horizontal")
-                        }
+                        viewModel.flipCamera(view, "horizontal")
                     }) {
                         Text("Flip Horizontal")
                     }
 
                     Button(onClick = {
-                        scope.launch {
-                            cameraManager.flipVertical(view)
-                            client.sendCameraFlip("vertical")
-                        }
+                        viewModel.flipCamera(view, "vertical")
                     }) {
                         Text("Flip Vertical")
                     }
                 }
             }
-        }
 
-        DisposableEffect(Unit) {
-            onDispose {
-                cameraManager.stopCamera()
-            }
+//            DisposableEffect(Unit) {
+//                onDispose {
+//                    viewModel.stopCamera()
+//                }
+//            }
+
         }
 
         Card(
@@ -316,10 +288,10 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
             elevation = CardDefaults.cardElevation(4.dp),
             colors = CardDefaults.cardColors(
                 containerColor = when (connectionState) {
-                is ConnectionState.Connected -> Color.Green.copy(alpha = 0.1f)
-                is ConnectionState.Error -> Color.Red.copy(alpha = 0.1f)
-                else -> MaterialTheme.colorScheme.surface
-            }
+                    is ConnectionState.Connected -> Color.Green.copy(alpha = 0.1f)
+                    is ConnectionState.Error -> Color.Red.copy(alpha = 0.1f)
+                    else -> MaterialTheme.colorScheme.surface
+                }
             )
         ) {
             Text(
