@@ -11,34 +11,15 @@ class VirtualCamera {
     private val isRunning = AtomicBoolean(false)
     private var retryCount = 0
     private val maxRetries = 3
-    private val retryDelayMs = 500L
-    private var assignedVirtualCamera: Int? = null
-
-    private fun findUnusedVideoDevice(): Int {
-        for (i in 5..20) {
-            val devicePath = "/dev/video$i"
-            if (!File(devicePath).exists()) {
-                return i
-            }
-        }
-        throw IllegalStateException("No unused video device found")
-    }
+    private val retryDelayMs = 500L // Reduced delay
 
     suspend fun start(
-        devicePath: String = "/dev/video${findUnusedVideoDevice()}",
+        devicePath: String = "/dev/video5",
         cameraMode: String = "Back",
         flipHorizontal: Boolean = false,
         flipVertical: Boolean = false,
         rotation: Float = 0f
     ) = withContext(Dispatchers.IO) {
-        if (assignedVirtualCamera == null) {
-            assignedVirtualCamera = devicePath.substringAfterLast("video").toInt()
-        }
-
-        val finalDevicePath = "/dev/video$assignedVirtualCamera"
-        if (!File(finalDevicePath).exists()) {
-            assignedVirtualCamera = findUnusedVideoDevice()
-        }
 
         if (!File(devicePath).exists()) {
             println("Loading v4l2loopback module...")
@@ -47,13 +28,12 @@ class VirtualCamera {
                 "modprobe",
                 "v4l2loopback",
                 "devices=1",
-                "video_nr=$assignedVirtualCamera",
+                "video_nr=5",
                 "card_label=uConnect Virtual Camera",
                 "exclusive_caps=1"
             ))
             Thread.sleep(1000)
         }
-
 
         val transposeFilter = if (cameraMode == "Back") "transpose=0" else "transpose=3"
         val hflipFilter = if (flipHorizontal) ",hflip" else ""
@@ -145,7 +125,6 @@ class VirtualCamera {
                 println("Error stopping FFmpeg process: ${e.message}")
             }
         }
-        assignedVirtualCamera = null  // Reset for next use
         ffmpegProcess = null
         retryCount = 0
     }
