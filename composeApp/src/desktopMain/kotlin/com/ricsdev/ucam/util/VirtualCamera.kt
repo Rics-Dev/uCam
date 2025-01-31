@@ -1,9 +1,11 @@
 package com.ricsdev.ucam.util
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+
+private val logger = AppLogger
 
 class VirtualCamera {
 
@@ -22,7 +24,7 @@ class VirtualCamera {
     ) = withContext(Dispatchers.IO) {
 
         if (!File(devicePath).exists()) {
-            println("Loading v4l2loopback module...")
+            logger.i("VirtualCamera", "Loading v4l2loopback module...")
             Runtime.getRuntime().exec(arrayOf(
                 "pkexec",
                 "modprobe",
@@ -56,7 +58,8 @@ class VirtualCamera {
             .start()
 
         isRunning.set(true)
-        println("FFmpeg process started successfully.")
+        logger.i("VirtualCamera", "FFmpeg process started successfully.")
+
     }
 
     suspend fun changeOrientation(
@@ -66,7 +69,7 @@ class VirtualCamera {
         rotation: Float = 0f
     ) = withContext(Dispatchers.IO) {
         if (!isRunning.get() || ffmpegProcess == null) {
-            println("Virtual camera is not running or FFmpeg process is null.")
+            logger.e("VirtualCamera", "Virtual camera is not running or FFmpeg process is null.")
             return@withContext
         }
         stop() // Stop the current FFmpeg process
@@ -83,33 +86,32 @@ class VirtualCamera {
     private suspend fun restartProcess() = withContext(Dispatchers.IO) {
         if (retryCount < maxRetries) {
             retryCount++
-            println("Attempting to restart FFmpeg process (Retry $retryCount of $maxRetries)...")
+            logger.i("VirtualCamera", "Attempting to restart FFmpeg process (Retry $retryCount of $maxRetries)...")
             stop()
             Thread.sleep(retryDelayMs)
             start()
         } else {
-            println("Max retries ($maxRetries) reached. Stopping virtual camera.")
+            logger.e("VirtualCamera", "Max retries ($maxRetries) reached. Stopping virtual camera.")
             stop()
         }
     }
 
     suspend fun writeFrame(frameBytes: ByteArray) = withContext(Dispatchers.IO) {
         if (!isRunning.get() || ffmpegProcess == null) {
-            println("Virtual camera is not running or FFmpeg process is null.")
+            logger.e("VirtualCamera", "Virtual camera is not running or FFmpeg process is null.")
             return@withContext
         }
 
         if (frameBytes.isEmpty()) {
-            println("Empty frame bytes provided. Skipping write operation.")
+            logger.e("VirtualCamera", "Empty frame bytes provided. Skipping write operation.")
             return@withContext
         }
 
         try {
             ffmpegProcess?.outputStream?.write(frameBytes)
             ffmpegProcess?.outputStream?.flush()
-            println("Frame written to virtual camera successfully.")
         } catch (e: Exception) {
-            println("Error writing frame to virtual camera: ${e.message}")
+            logger.e("VirtualCamera", "Error writing frame to virtual camera: ${e.message}")
             restartProcess()
         }
     }
@@ -120,9 +122,9 @@ class VirtualCamera {
             try {
                 outputStream.close()
                 destroy()
-                println("FFmpeg process stopped successfully.")
+                logger.i("VirtualCamera", "FFmpeg process stopped successfully.")
             } catch (e: Exception) {
-                println("Error stopping FFmpeg process: ${e.message}")
+                logger.e("VirtualCamera", "Error stopping FFmpeg process: ${e.message}")
             }
         }
         ffmpegProcess = null
@@ -133,7 +135,7 @@ class VirtualCamera {
 
     init {
         Runtime.getRuntime().addShutdownHook(Thread {
-            println("Shutdown hook triggered. Stopping virtual camera...")
+            logger.i("VirtualCamera", "Shutdown hook triggered. Stopping virtual camera...")
             stop()
         })
     }

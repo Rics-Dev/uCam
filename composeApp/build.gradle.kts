@@ -86,6 +86,7 @@ kotlin {
                 implementation(libs.koin.compose.viewmodel)
                 api(libs.koin.core)
                 implementation(libs.bundles.ktor)
+//                implementation(libs.logback.classic)
             }
         }
 
@@ -115,7 +116,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.bundles.ktor.server)
-                implementation(libs.javacv.platform)
+//                implementation(libs.javacv.platform)
 
                 // Platform-specific Skiko configuration
                 val osName = System.getProperty("os.name")
@@ -125,8 +126,7 @@ kotlin {
                     else -> error("Unsupported OS: $osName")
                 }
 
-                val osArch = System.getProperty("os.arch")
-                val targetArch = when (osArch) {
+                val targetArch = when (val osArch = System.getProperty("os.arch")) {
                     "x86_64", "amd64" -> "x64"
                     "aarch64" -> "arm64"
                     else -> error("Unsupported arch: $osArch")
@@ -141,6 +141,7 @@ kotlin {
 
 // Android configuration block
 android {
+
     namespace = "com.ricsdev.ucam"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
@@ -155,6 +156,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
         }
     }
 
