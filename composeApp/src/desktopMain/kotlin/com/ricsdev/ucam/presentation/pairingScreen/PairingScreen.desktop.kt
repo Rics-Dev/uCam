@@ -54,14 +54,14 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
     LaunchedEffect(Unit) {
         server.start()
         try {
-            virtualCamera.start(cameraMode = cameraMode)
+            virtualCamera.start(cameraMode = cameraMode, flipHorizontal = flipHorizontal, flipVertical = flipVertical, rotation =  cameraRotation)
         } catch (e: Exception) {
             println("Failed to start virtual camera: ${e.message}")
         }
     }
 
-    LaunchedEffect(cameraMode) {
-        virtualCamera.changeOrientation(cameraMode)
+    LaunchedEffect(cameraMode, flipHorizontal, flipVertical, cameraRotation) {
+        virtualCamera.changeOrientation(cameraMode,  flipHorizontal, flipVertical, cameraRotation)
     }
 
 
