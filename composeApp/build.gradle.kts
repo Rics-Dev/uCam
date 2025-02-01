@@ -18,6 +18,7 @@ kotlin {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
+            freeCompilerArgs.add("-Xexpect-actual-classes")
         }
     }
 
@@ -34,7 +35,12 @@ kotlin {
     }
 
     // Desktop configuration
-    jvm("desktop")
+    jvm("desktop"){
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            freeCompilerArgs.add("-Xexpect-actual-classes")
+        }
+    }
 
     // Web configuration
     @OptIn(ExperimentalWasmDsl::class)
@@ -55,6 +61,10 @@ kotlin {
         }
         binaries.executable()
     }
+
+//    sourceSets.all {
+//        languageSettings.enableLanguageFeature("ExpectActualClasses")
+//    }
 
     sourceSets {
         // Common dependencies for all platforms

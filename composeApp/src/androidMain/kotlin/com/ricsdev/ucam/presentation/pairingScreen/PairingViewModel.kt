@@ -1,25 +1,32 @@
 package com.ricsdev.ucam.presentation.pairingScreen
 
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ricsdev.ucam.service.ConnectionService
 import com.ricsdev.ucam.util.CameraConfig
 import com.ricsdev.ucam.util.ConnectionConfig
-import com.ricsdev.ucam.util.ConnectionState
-import com.ricsdev.ucam.util.KtorClient
+import com.ricsdev.ucam.util.ConnectionManager
+import com.ricsdev.ucam.util.ConnectionStateHolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+
 class PairingViewModel(
-    private val ktorClient: KtorClient,
-    private val cameraManager: CameraConfig
+    private val clientConnection: ConnectionManager,
+    connectionStateHolder: ConnectionStateHolder,
+    private val cameraManager: CameraConfig,
 ) : ViewModel() {
 
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
-    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+    val connectionState = connectionStateHolder.connectionState
+
 
     private val _useQrScanner = MutableStateFlow(false)
     val useQrScanner: StateFlow<Boolean> = _useQrScanner.asStateFlow()
@@ -33,14 +40,6 @@ class PairingViewModel(
     private val _port = MutableStateFlow(ConnectionConfig.DEFAULT_PORT.toString())
     val port: StateFlow<String> = _port.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            ktorClient.connectionState.collect { state ->
-                _connectionState.value = state
-            }
-        }
-    }
-
     fun setUseQrScanner(useQrScanner: Boolean) {
         _useQrScanner.value = useQrScanner
     }
@@ -49,7 +48,7 @@ class PairingViewModel(
         _useFrontCamera.value = useFrontCamera
         viewModelScope.launch {
             cameraManager.switchCamera(useFrontCamera)
-            ktorClient.sendCameraMode(if (useFrontCamera) "Front" else "Back")
+            clientConnection.sendCameraMode(if (useFrontCamera) "Front" else "Back")
         }
     }
 
@@ -61,15 +60,18 @@ class PairingViewModel(
         _port.value = port
     }
 
-    fun connect(serverUrl: String) {
-        viewModelScope.launch {
-            ktorClient.connect(serverUrl)
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun connect(serverUrl: String, context: Context) {
+        val serviceIntent = Intent(context, ConnectionService::class.java).apply {
+            putExtra("serverUrl", serverUrl)
         }
+        context.startForegroundService(serviceIntent)
     }
 
-    fun disconnect() {
+    fun disconnect(context: Context) {
+        context.stopService(Intent(context, ConnectionService::class.java))
         viewModelScope.launch {
-            ktorClient.disconnect()
+            clientConnection.disconnect()
         }
     }
 
@@ -77,7 +79,7 @@ class PairingViewModel(
         viewModelScope.launch {
             cameraManager.startCamera(view, useFrontCamera, lifecycleOwner) { frameBytes ->
                 viewModelScope.launch {
-                    ktorClient.sendCameraFrame(frameBytes)
+                    clientConnection.sendCameraFrame(frameBytes)
                 }
             }
         }
@@ -86,7 +88,7 @@ class PairingViewModel(
     fun rotateCamera(view: PreviewView, rotationAngle: Float) {
         viewModelScope.launch {
             cameraManager.rotateCamera(view, rotationAngle)
-            ktorClient.sendCameraRotation(rotationAngle.toString())
+            clientConnection.sendCameraRotation(rotationAngle.toString())
         }
     }
 
@@ -96,7 +98,7 @@ class PairingViewModel(
                 "horizontal" -> cameraManager.flipHorizontal(view)
                 "vertical" -> cameraManager.flipVertical(view)
             }
-            ktorClient.sendCameraFlip(direction)
+            clientConnection.sendCameraFlip(direction)
         }
     }
 
@@ -109,8 +111,5 @@ class PairingViewModel(
     override fun onCleared() {
         super.onCleared()
         cameraManager.stopCamera()
-        viewModelScope.launch {
-            ktorClient.disconnect()
-        }
     }
 }

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
@@ -15,7 +14,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.ricsdev.ucam.util.ConnectionState
 import qrgenerator.qrkitpainter.PatternType
@@ -31,7 +29,7 @@ import qrgenerator.qrkitpainter.rememberQrKitPainter
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-actual fun PairingScreen(onPaired: (String) -> Unit) {
+actual fun PairingScreen() {
     val viewModel: PairingViewModel = koinViewModel()
 
     val connectionState by viewModel.connectionState.collectAsState()
@@ -72,26 +70,20 @@ actual fun PairingScreen(onPaired: (String) -> Unit) {
         Text("Status: ${connectionState::class.simpleName}")
 
         if (connectionState is ConnectionState.Connected) {
-            currentFrame?.let { imageBitmap ->
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = "Camera Feed",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(500.dp)
-                        .graphicsLayer {
-                            rotationZ = if (cameraMode == "Back") cameraRotation + 270f else cameraRotation + 90f
-                            scaleX = if (flipVertical) -1f else 1f
-                            scaleY = if (flipHorizontal) -1f else 1f
-                        }
-                )
-            }
-        }
-
-        LaunchedEffect(connectionState) {
-            if (connectionState is ConnectionState.Connected) {
-                onPaired(serverUrl)
-            }
+//            currentFrame?.let { imageBitmap ->
+//                Image(
+//                    bitmap = imageBitmap,
+//                    contentDescription = "Camera Feed",
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .height(500.dp)
+//                        .graphicsLayer {
+//                            rotationZ = if (cameraMode == "Back") cameraRotation + 270f else cameraRotation + 90f
+//                            scaleX = if (flipVertical) -1f else 1f
+//                            scaleY = if (flipHorizontal) -1f else 1f
+//                        }
+//                )
+//            }
         }
     }
 }

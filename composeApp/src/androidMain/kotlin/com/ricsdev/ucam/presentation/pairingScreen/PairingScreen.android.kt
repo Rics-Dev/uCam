@@ -1,7 +1,9 @@
 package com.ricsdev.ucam.presentation.pairingScreen
 
+import android.os.Build
 import android.util.Log
 import android.view.ViewGroup
+import androidx.annotation.RequiresApi
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -36,12 +38,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ricsdev.ucam.MainViewModel
 import com.ricsdev.ucam.util.ConnectionConfig
 import com.ricsdev.ucam.util.ConnectionState
 import org.koin.compose.viewmodel.koinViewModel
@@ -50,17 +54,22 @@ import qrscanner.OverlayShape
 import qrscanner.QrScanner
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-actual fun PairingScreen(onPaired: (String) -> Unit){
+actual fun PairingScreen() {
 
     val viewModel: PairingViewModel = koinViewModel()
+
     val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
+
+
     val useQrScanner by viewModel.useQrScanner.collectAsStateWithLifecycle()
     val useFrontCamera by viewModel.useFrontCamera.collectAsStateWithLifecycle()
     val ipAddress by viewModel.ipAddress.collectAsStateWithLifecycle()
     val port by viewModel.port.collectAsStateWithLifecycle()
     var rotationAngle by remember { mutableFloatStateOf(0f) }
     var previewView by remember { mutableStateOf<PreviewView?>(null) }
+    val context = LocalContext.current
 
 
     Column(
@@ -152,7 +161,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit){
                             viewModel.setIpAddress(parts[1].substring(2))
                             viewModel.setPort(parts[2].split("/")[0])
                         }
-                        viewModel.connect(url)
+                        viewModel.connect(url, context)
                     }
                 },
                 onFailure = { /* Handle error */ },
@@ -197,7 +206,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit){
                         Button(
                             onClick = {
                                 val serverUrl = "ws://$ipAddress:$port${ConnectionConfig.WS_PATH}"
-                                viewModel.connect(serverUrl)
+                                viewModel.connect(serverUrl, context)
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -205,7 +214,7 @@ actual fun PairingScreen(onPaired: (String) -> Unit){
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
-                            onClick = { viewModel.disconnect() },
+                            onClick = { viewModel.disconnect(context) },
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Disconnect")
@@ -236,40 +245,40 @@ actual fun PairingScreen(onPaired: (String) -> Unit){
                 )
             }
 
-            previewView?.let { view ->
-                val lifecycleOwner = LocalLifecycleOwner.current
-                DisposableEffect(view, useFrontCamera) {
-                    viewModel.startCamera(view, useFrontCamera, lifecycleOwner)
-                    onDispose {
-                        viewModel.stopCamera()
-                    }
-                }
-
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Button(onClick = {
-                        rotationAngle += 90f
-                        viewModel.rotateCamera(view, rotationAngle)
-                    }) {
-                        Text("Rotate Camera")
-                    }
-
-                    Button(onClick = {
-                        viewModel.flipCamera(view, "horizontal")
-                    }) {
-                        Text("Flip Horizontal")
-                    }
-
-                    Button(onClick = {
-                        viewModel.flipCamera(view, "vertical")
-                    }) {
-                        Text("Flip Vertical")
-                    }
-                }
-            }
+//            previewView?.let { view ->
+//                val lifecycleOwner = LocalLifecycleOwner.current
+//                DisposableEffect(view, useFrontCamera) {
+//                    viewModel.startCamera(view, useFrontCamera, lifecycleOwner)
+//                    onDispose {
+//                        viewModel.stopCamera()
+//                    }
+//                }
+//
+//
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceEvenly
+//                ) {
+//                    Button(onClick = {
+//                        rotationAngle += 90f
+//                        viewModel.rotateCamera(view, rotationAngle)
+//                    }) {
+//                        Text("Rotate Camera")
+//                    }
+//
+//                    Button(onClick = {
+//                        viewModel.flipCamera(view, "horizontal")
+//                    }) {
+//                        Text("Flip Horizontal")
+//                    }
+//
+//                    Button(onClick = {
+//                        viewModel.flipCamera(view, "vertical")
+//                    }) {
+//                        Text("Flip Vertical")
+//                    }
+//                }
+//            }
 
         }
 
@@ -293,15 +302,6 @@ actual fun PairingScreen(onPaired: (String) -> Unit){
                     else -> MaterialTheme.colorScheme.onSurface
                 }
             )
-        }
-
-        LaunchedEffect(connectionState) {
-            if (connectionState is ConnectionState.Connected) {
-                val serverUrl = "ws://$ipAddress:$port${ConnectionConfig.WS_PATH}"
-                onPaired(serverUrl)
-            } else if (connectionState is ConnectionState.Error) {
-                Log.d("PairingScreen", "Error: ${(connectionState as ConnectionState.Error).message}")
-            }
         }
     }
 }

@@ -1,41 +1,41 @@
 package com.ricsdev.ucam.presentation.pairingScreen
 
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Canvas
 import androidx.lifecycle.ViewModel
 import com.ricsdev.ucam.util.AppLogger
-import com.ricsdev.ucam.util.KtorServer
 import com.ricsdev.ucam.util.VirtualCamera
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import org.jetbrains.skia.Image
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.viewModelScope
+import com.ricsdev.ucam.util.ConnectionManager
+import com.ricsdev.ucam.util.ConnectionStateHolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class PairingViewModel(
-    private val server: KtorServer,
+    private val serverConnection: ConnectionManager,
+    connectionStateHolder: ConnectionStateHolder,
     private val virtualCamera: VirtualCamera,
     private val logger: AppLogger
 ) : ViewModel() {
     private val _currentFrame = MutableStateFlow<ImageBitmap?>(null)
     val currentFrame = _currentFrame.asStateFlow()
 
-    val connectionState = server.connectionState
-    val cameraMode = server.cameraMode
-    val cameraRotation = server.cameraRotation
-    val flipHorizontal = server.flipHorizontal
-    val flipVertical = server.flipVertical
+    val connectionState = connectionStateHolder.connectionState
+    val cameraMode = serverConnection.cameraMode
+    val cameraRotation = serverConnection.cameraRotation
+    val flipHorizontal = serverConnection.flipHorizontal
+    val flipVertical = serverConnection.flipVertical
 
     init {
-        startServer()
-        collectCameraFrames()
+//        collectCameraFrames()
+//        startVirtualCamera()
     }
 
-    private fun startServer() {
+
+    private fun startVirtualCamera(){
         viewModelScope.launch {
-            server.start()
             try {
                 virtualCamera.start(
                     cameraMode = cameraMode.value,
@@ -49,9 +49,10 @@ class PairingViewModel(
         }
     }
 
+
     private fun collectCameraFrames() {
         viewModelScope.launch {
-            server.cameraFrames.collect { frameBytes ->
+            serverConnection.cameraFrames.collect { frameBytes ->
                 try {
                     _currentFrame.value = convertJPEGToImageBitmap(frameBytes)
                     if (virtualCamera.isActive()) {
@@ -76,7 +77,7 @@ class PairingViewModel(
         }
     }
 
-    fun getServerUrl(): String = server.getServerUrl()
+    fun getServerUrl(): String = serverConnection.getServerUrl()
 
     private fun convertJPEGToImageBitmap(jpegBytes: ByteArray): ImageBitmap {
         val image = Image.makeFromEncoded(jpegBytes)
@@ -85,7 +86,6 @@ class PairingViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        server.stop()
         virtualCamera.stop()
     }
 }
