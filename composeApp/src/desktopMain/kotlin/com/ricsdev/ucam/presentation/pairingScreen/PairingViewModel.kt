@@ -9,7 +9,6 @@ import com.ricsdev.ucam.util.VirtualCamera
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import org.jetbrains.skia.Image
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Paint
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

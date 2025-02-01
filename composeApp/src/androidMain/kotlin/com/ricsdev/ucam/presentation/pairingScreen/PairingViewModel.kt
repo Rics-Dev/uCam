@@ -4,7 +4,7 @@ import androidx.camera.view.PreviewView
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ricsdev.ucam.util.CameraManager
+import com.ricsdev.ucam.util.CameraConfig
 import com.ricsdev.ucam.util.ConnectionConfig
 import com.ricsdev.ucam.util.ConnectionState
 import com.ricsdev.ucam.util.KtorClient
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 class PairingViewModel(
     private val ktorClient: KtorClient,
-    private val cameraManager: CameraManager
+    private val cameraManager: CameraConfig
 ) : ViewModel() {
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)

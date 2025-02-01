@@ -9,55 +9,31 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.awt.Toolkit
-import java.awt.datatransfer.DataFlavor
-import java.awt.datatransfer.FlavorListener
-import java.awt.datatransfer.StringSelection
 import java.net.BindException
 import java.net.NetworkInterface
 import kotlin.time.Duration
 
-
-class KtorServer {
+class KtorServer(
+    private val clipboardManager: ClipboardManager,
+) {
     private var server: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState = _connectionState.asStateFlow()
-    private val _messages = MutableStateFlow<List<String>>(emptyList())
-    val messages = _messages.asStateFlow()
 
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var currentSession: WebSocketSession? = null
 
-    private val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-    private var lastClipboardContent: String? = null
-
-    private val clipboardListener = FlavorListener {
-        try {
-            val content = clipboard.getData(DataFlavor.stringFlavor) as? String
-            if (content != null && content != lastClipboardContent) {
-                lastClipboardContent = content
-                scope.launch {
-                    currentSession?.let { session ->
-                        val message = ClipboardMessage(clipboardMessage = content)
-                        session.send(Frame.Text(Json.encodeToString(message)))
-                    }
-                }
-            }
-        } catch (e: ClassNotFoundException) {
-            println("Class not found for DataFlavor: ${e.message}")
-        } catch (e: Exception) {
-            println("Error handling clipboard change: ${e.message}")
-        }
-    }
+    private var clipboardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var clipboardJob: Job? = null
 
     private val _cameraMode = MutableStateFlow("Back")
     val cameraMode = _cameraMode.asStateFlow()
@@ -65,17 +41,29 @@ class KtorServer {
     private val _cameraRotation = MutableStateFlow(0f)
     val cameraRotation = _cameraRotation.asStateFlow()
 
-
     private val _flipHorizontal = MutableStateFlow(false)
     val flipHorizontal = _flipHorizontal.asStateFlow()
 
     private val _flipVertical = MutableStateFlow(true)
     val flipVertical = _flipVertical.asStateFlow()
 
-
     private val _cameraFrames = MutableSharedFlow<ByteArray>()
     val cameraFrames = _cameraFrames.asSharedFlow()
 
+    init {
+        setupClipboardListener()
+    }
+
+    private fun setupClipboardListener() {
+        clipboardJob = clipboardScope.launch {
+            clipboardManager.clipboardContent.collect { content ->
+                if (content != null && currentSession != null) {
+                    val message = ClipboardMessage(clipboardMessage = content)
+                    currentSession?.send(Frame.Text(Json.encodeToString(ClipboardMessage.serializer(), message)))
+                }
+            }
+        }
+    }
 
     fun getServerUrl(): String {
         val ipAddress = NetworkInterface.getNetworkInterfaces().toList()
@@ -99,10 +87,9 @@ class KtorServer {
                 routing {
                     webSocket(ConnectionConfig.WS_PATH) {
                         currentSession = this
-                        clipboard.addFlavorListener(clipboardListener)
-
                         println("WebSocket connection established")
                         _connectionState.value = ConnectionState.Connected
+                        setupClipboardListener()
 
                         try {
                             for (frame in incoming) {
@@ -113,13 +100,8 @@ class KtorServer {
                                         when {
                                             text.startsWith("{\"clipboardMessage\"") -> {
                                                 val clipboardData = Json.decodeFromString<ClipboardMessage>(text)
-                                                if (clipboardData.clipboardMessage != lastClipboardContent) {
-                                                    lastClipboardContent = clipboardData.clipboardMessage
-                                                    val selection = StringSelection(clipboardData.clipboardMessage)
-                                                    clipboard.setContents(selection, selection)
-                                                }
+                                                clipboardManager.setContent(clipboardData.clipboardMessage)
                                             }
-
                                             text.startsWith("CameraMode:") -> {
                                                 _cameraMode.value = text.removePrefix("CameraMode:")
                                             }
@@ -131,10 +113,6 @@ class KtorServer {
                                             }
                                             text.startsWith("CameraFlip:vertical") -> {
                                                 _flipVertical.value = !_flipVertical.value
-                                            }
-                                            else -> {
-                                                _messages.update { it + text }
-                                                outgoing.send(Frame.Text("Server received: $text"))
                                             }
                                         }
                                     }
@@ -150,8 +128,8 @@ class KtorServer {
                             _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
                         } finally {
                             println("WebSocket connection closed")
-                            clipboard.removeFlavorListener(clipboardListener)
                             currentSession = null
+                            _connectionState.value = ConnectionState.Disconnected
                         }
                     }
                 }
@@ -166,13 +144,19 @@ class KtorServer {
     }
 
     fun stop() {
-        clipboard.removeFlavorListener(clipboardListener)
+        clipboardJob?.cancel()
+        clipboardScope.cancel()
         currentSession = null
         server?.stop(1000, 2000)
         server = null
-        _messages.value = emptyList()
         _connectionState.value = ConnectionState.Disconnected
         scope.cancel()
+
+        // Create new scopes for next connection
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        clipboardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+        // Cleanup clipboard manager
+        clipboardManager.cleanup()
     }
 }

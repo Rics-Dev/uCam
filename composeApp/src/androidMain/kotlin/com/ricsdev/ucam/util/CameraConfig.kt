@@ -24,7 +24,7 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.ArrayDeque
 
-class CameraManager(private val context: Context) {
+class CameraConfig(private val context: Context) {
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private val mainExecutor = ContextCompat.getMainExecutor(context)
