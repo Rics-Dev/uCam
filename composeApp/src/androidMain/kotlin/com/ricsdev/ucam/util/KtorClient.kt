@@ -1,7 +1,11 @@
 package com.ricsdev.ucam.util
 
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.util.Log
+import com.ricsdev.ucam.data.model.ClipboardMessage
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.websocket.*
@@ -16,10 +20,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
 import java.net.URI
 import java.net.URISyntaxException
 
-class KtorClient(private val cameraManager: CameraManager) {
+class KtorClient(private val context: Context, private val cameraManager: CameraManager) {
     private var client = createClient()
     private fun createClient() = HttpClient(CIO) {
         install(WebSockets) {
@@ -42,6 +47,19 @@ class KtorClient(private val cameraManager: CameraManager) {
     private var lastFrameSentTime = 0L
 
 
+    private val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    private var lastClipboardContent: String? = null
+    private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
+        val content = clipboardManager.primaryClip?.getItemAt(0)?.text?.toString()
+        if (content != null && content != lastClipboardContent) {
+            lastClipboardContent = content
+            scope.launch {
+                val message = ClipboardMessage(clipboardMessage = content)
+                session?.send(Frame.Text(Json.encodeToString(ClipboardMessage.serializer(), message)))
+            }
+        }
+    }
+
 
 
     suspend fun disconnect() {
@@ -54,6 +72,7 @@ class KtorClient(private val cameraManager: CameraManager) {
             client = createClient()
             scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             _connectionState.value = ConnectionState.Disconnected
+            clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         } catch (e: Exception) {
             Log.e("KtorClient", "Error during disconnect: ${e.message}", e)
         }
@@ -86,6 +105,9 @@ class KtorClient(private val cameraManager: CameraManager) {
                 serverUrl.replace("http://", "ws://")
             } else serverUrl
 
+
+            clipboardManager.addPrimaryClipChangedListener(clipboardListener)
+
             scope.launch {
                 try {
                     client.webSocket(wsUrl) {
@@ -101,6 +123,16 @@ class KtorClient(private val cameraManager: CameraManager) {
                                 when (frame) {
                                     is Frame.Text -> {
                                         val text = frame.readText()
+                                        if (text.startsWith("{\"clipboardMessage\"")) {
+                                            val clipboardData = Json.decodeFromString<ClipboardMessage>(text)
+                                            if (clipboardData.clipboardMessage != lastClipboardContent) {
+                                                // Update the clipboard content first
+                                                val clip = ClipData.newPlainText("Synced Text", clipboardData.clipboardMessage)
+                                                clipboardManager.setPrimaryClip(clip)
+                                                // Then update the lastClipboardContent
+                                                lastClipboardContent = clipboardData.clipboardMessage
+                                            }
+                                        }
                                         Log.d("KtorClient", "Received from server: $text")
                                     }
                                     is Frame.Binary -> {
@@ -119,6 +151,8 @@ class KtorClient(private val cameraManager: CameraManager) {
                         } catch (e: Exception) {
                             Log.e("KtorClient", "Error in WebSocket connection: ${e.message}", e)
                             _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
+                        } finally {
+                            clipboardManager.removePrimaryClipChangedListener(clipboardListener)
                         }
                     }
                 } catch (e: java.nio.channels.UnresolvedAddressException) {
@@ -178,14 +212,6 @@ class KtorClient(private val cameraManager: CameraManager) {
         }
     }
 
-//    suspend fun sendCameraFrame(frameBytes: ByteArray) {
-//        lastFrameSentTime = System.currentTimeMillis()
-//        session?.send(Frame.Binary(fin = true, data = frameBytes))
-//    }
-
-//    suspend fun sendCameraFrame(frameBytes: ByteArray) {
-//        session?.send(Frame.Binary(fin = true, data = frameBytes))
-//    }
 
     suspend fun sendCameraMode(orientation: String) {
         session?.send(Frame.Text("CameraMode:$orientation"))

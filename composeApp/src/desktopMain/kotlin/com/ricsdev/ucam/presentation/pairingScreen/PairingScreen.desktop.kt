@@ -10,21 +10,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.dp
 import com.ricsdev.ucam.util.ConnectionState
-import com.ricsdev.ucam.util.KtorServer
-import org.jetbrains.skia.Image
 import qrgenerator.qrkitpainter.PatternType
 import qrgenerator.qrkitpainter.QrBallType
 import qrgenerator.qrkitpainter.QrFrameType
@@ -35,10 +28,6 @@ import qrgenerator.qrkitpainter.getSelectedPattern
 import qrgenerator.qrkitpainter.getSelectedPixel
 import qrgenerator.qrkitpainter.getSelectedQrBall
 import qrgenerator.qrkitpainter.rememberQrKitPainter
-
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.ricsdev.ucam.util.VirtualCamera
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable

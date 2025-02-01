@@ -275,12 +275,6 @@ actual fun PairingScreen(onPaired: (String) -> Unit){
                 }
             }
 
-//            DisposableEffect(Unit) {
-//                onDispose {
-//                    viewModel.stopCamera()
-//                }
-//            }
-
         }
 
         Card(

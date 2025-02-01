@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.20" // Add this line
 }
 
 kotlin {
@@ -86,6 +87,9 @@ kotlin {
                 implementation(libs.koin.compose.viewmodel)
                 api(libs.koin.core)
                 implementation(libs.bundles.ktor)
+
+
+                implementation(libs.kotlinx.serialization.json)
 //                implementation(libs.logback.classic)
             }
         }
