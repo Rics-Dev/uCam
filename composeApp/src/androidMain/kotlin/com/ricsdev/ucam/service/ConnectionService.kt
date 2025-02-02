@@ -17,10 +17,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 
-class ConnectionService(
-    private val connectionManager: ConnectionManager,
-) : Service() {
+class ConnectionService: Service() {
+    private val connectionManager: ConnectionManager by inject()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val CHANNEL_ID = "WebSocketServiceChannel"
     private val NOTIFICATION_ID = 1
