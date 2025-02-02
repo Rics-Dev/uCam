@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
+import com.ricsdev.ucam.presentation.homeScreen.HomeScreen
 import com.ricsdev.ucam.presentation.setupScreen.SetupScreen
 
 @Composable
@@ -28,9 +28,9 @@ fun AppNavigation(
         }
 
 
-//        composable<Screens.HomeScreen> {
-//            HomeScreen(navController)
-//        }
+        composable<Screens.HomeScreen> {
+            HomeScreen(navController)
+        }
 
 
 //        composable<Screens.NewAccountScreen>(

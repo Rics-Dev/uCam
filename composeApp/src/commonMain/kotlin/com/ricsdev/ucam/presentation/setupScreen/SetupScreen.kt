@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.ricsdev.ucam.navigation.Screens
 import com.ricsdev.ucam.presentation.setupScreen.components.AllSet
 import com.ricsdev.ucam.presentation.setupScreen.components.GetStarted
 import com.ricsdev.ucam.presentation.setupScreen.components.PairDevices
@@ -21,6 +22,8 @@ fun SetupScreen(
 ) {
     var currentStep by remember { mutableStateOf(0) }
 
+    val steps = listOf("Get Started", "Pair Devices", "Permissions", "All Set")
+
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -29,7 +32,6 @@ fun SetupScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Animated content container
             AnimatedContent(
                 targetState = currentStep,
                 transitionSpec = {
@@ -51,15 +53,19 @@ fun SetupScreen(
                         onBack = { currentStep-- }
                     )
                     3 -> AllSet(
-                        onFinish = { /* Navigate to main app */ }
+                        onFinish = {
+                            navController.navigate(Screens.HomeScreen) {
+                                popUpTo(Screens.SetupScreen) { inclusive = true }
+                            }
+                        }
                     )
                 }
             }
 
-            // Progress indicator at the bottom
             StepProgressIndicator(
-                totalSteps = 4,
+                totalSteps = steps.size,
                 currentStep = currentStep,
+                steps = steps
             )
         }
     }

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.ricsdev.ucam.getPlatform
 
 @Composable
 fun StepProgressIndicator(
@@ -28,6 +29,8 @@ fun StepProgressIndicator(
     val primaryColor = MaterialTheme.colorScheme.primary
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
+    val platform = getPlatform().name
+//    println(platform)
 
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -37,7 +40,7 @@ fun StepProgressIndicator(
         // Progress indicators row
         Row(
             modifier = Modifier
-                .fillMaxWidth(0.8f) // Constrain width for better centering
+                .fillMaxWidth( if(platform.startsWith("Java")) 0.8f else 1f)
                 .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
@@ -84,7 +87,7 @@ fun StepProgressIndicator(
         // Step labels
         Row(
             modifier = Modifier
-                .fillMaxWidth(0.8f)
+                .fillMaxWidth( if(platform.startsWith("Java")) 0.8f else 1f)
                 .padding(top = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -144,7 +147,7 @@ private fun StepCircle(
 
         Box(
             modifier = Modifier
-                .size(circleSize - 18.dp)
+                .size(circleSize - 16.dp)
                 .clip(CircleShape)
                 .background(
                     if (step == currentStep || stepProgress > 0f) primaryColor

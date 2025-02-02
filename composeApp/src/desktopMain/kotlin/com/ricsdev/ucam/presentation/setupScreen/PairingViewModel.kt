@@ -28,10 +28,6 @@ class PairingViewModel(
     val flipHorizontal = serverConnection.flipHorizontal
     val flipVertical = serverConnection.flipVertical
 
-    init {
-//        collectCameraFrames()
-//        startVirtualCamera()
-    }
 
 
     private fun startVirtualCamera(){
