@@ -1,7 +1,7 @@
 package com.ricsdev.ucam.di
 
 import com.ricsdev.ucam.MainViewModel
-import com.ricsdev.ucam.presentation.pairingScreen.PairingViewModel
+import com.ricsdev.ucam.presentation.setupScreen.PairingViewModel
 import com.ricsdev.ucam.util.AppLogger
 import com.ricsdev.ucam.util.ClipboardManager
 import com.ricsdev.ucam.util.ConnectionManager

@@ -1,0 +1,70 @@
+package com.ricsdev.ucam.presentation.setupScreen
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import com.ricsdev.ucam.presentation.setupScreen.components.AllSet
+import com.ricsdev.ucam.presentation.setupScreen.components.GetStarted
+import com.ricsdev.ucam.presentation.setupScreen.components.PairDevices
+import com.ricsdev.ucam.presentation.setupScreen.components.ReviewPermissions
+import com.ricsdev.ucam.presentation.setupScreen.components.StepProgressIndicator
+
+@Composable
+fun SetupScreen(
+    navController: NavHostController,
+) {
+    var currentStep by remember { mutableStateOf(0) }
+
+    Scaffold { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Animated content container
+            AnimatedContent(
+                targetState = currentStep,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)) togetherWith
+                            fadeOut(animationSpec = tween(300))
+                },
+                modifier = Modifier.weight(1f)
+            ) { step ->
+                when (step) {
+                    0 -> GetStarted(
+                        onNext = { currentStep++ }
+                    )
+                    1 -> PairDevices(
+                        onNext = { currentStep++ },
+                        onBack = { currentStep-- }
+                    )
+                    2 -> ReviewPermissions(
+                        onNext = { currentStep++ },
+                        onBack = { currentStep-- }
+                    )
+                    3 -> AllSet(
+                        onFinish = { /* Navigate to main app */ }
+                    )
+                }
+            }
+
+            // Progress indicator at the bottom
+            StepProgressIndicator(
+                totalSteps = 4,
+                currentStep = currentStep,
+            )
+        }
+    }
+}
+
+
+
+
