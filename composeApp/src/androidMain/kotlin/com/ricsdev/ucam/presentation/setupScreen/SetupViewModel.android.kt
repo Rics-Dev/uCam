@@ -13,6 +13,7 @@ import com.ricsdev.ucam.service.ConnectionService
 import com.ricsdev.ucam.util.AppLogger
 import com.ricsdev.ucam.util.ConnectionConfig
 import com.ricsdev.ucam.util.ConnectionManager
+import com.ricsdev.ucam.util.ConnectionState
 import com.ricsdev.ucam.util.ConnectionStateHolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,9 +45,17 @@ actual class SetupViewModel actual constructor(
     }
 
 
+    // Add method to set connection state
+    fun setConnectionState(state: ConnectionState) {
+        connectionStateHolder.updateConnectionState(state)
+    }
+
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun connect(serverUrl: String, context: Context) {
-        // Check and request notification permission for Android 13+ before starting the service
+        // Only proceed if we're in Connecting state
+        if (connectionState.value !is ConnectionState.Connecting) return
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     context,
@@ -62,7 +71,6 @@ actual class SetupViewModel actual constructor(
             }
         }
 
-        // Start the service if permission is granted or not needed
         val serviceIntent = Intent(context, ConnectionService::class.java).apply {
             putExtra("serverUrl", serverUrl)
         }

@@ -69,12 +69,16 @@ actual fun PairQrCode(
                         .clipToBounds()
                         .clip(shape = RoundedCornerShape(size = 14.dp)),
                     onCompletion = { url ->
-                        val parts = url.split(":")
-                        if (parts.size == 3) {
-                            viewModel.setIpAddress(parts[1].substring(2))
-                            viewModel.setPort(parts[2].split("/")[0])
+                        // Only proceed if we're not already trying to connect
+                        if (connectionState is ConnectionState.Disconnected) {
+                            val parts = url.split(":")
+                            if (parts.size == 3) {
+                                viewModel.setIpAddress(parts[1].substring(2))
+                                viewModel.setPort(parts[2].split("/")[0])
+                                viewModel.setConnectionState(ConnectionState.Connecting)
+                                viewModel.connect(url, context)
+                            }
                         }
-                        viewModel.connect(url, context)
                     },
                     cameraLens = CameraLens.Back,
                     flashlightOn = false,
@@ -126,12 +130,6 @@ actual fun PairQrCode(
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Attempt ${(connectionState as ConnectionState.Connecting).attempt}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             is ConnectionState.Error -> {
