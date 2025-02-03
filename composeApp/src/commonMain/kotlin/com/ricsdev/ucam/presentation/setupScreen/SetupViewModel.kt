@@ -13,12 +13,4 @@ expect class SetupViewModel(
     logger: AppLogger
 ) : ViewModel {
     val connectionState: StateFlow<ConnectionState>
-//    val currentFrame: StateFlow<ImageBitmap?>
-//    val cameraMode: StateFlow<String>
-//    val cameraRotation: StateFlow<Float>
-//    val flipHorizontal: StateFlow<Boolean>
-//    val flipVertical: StateFlow<Boolean>
-
-//    fun updateCameraOrientation()
-//    fun getServerUrl(): String
 }

@@ -14,7 +14,7 @@ fun main() = application {
     Window(
         state = rememberWindowState(width = 850.dp, height = 650.dp),
         onCloseRequest = ::exitApplication,
-        title = "uCam",
+        title = "uConnect",
     ) {
         App()
     }

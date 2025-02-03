@@ -20,7 +20,7 @@ import java.net.BindException
 import java.net.NetworkInterface
 import kotlin.time.Duration
 
-actual class ConnectionManager(
+actual class ConnectionManager actual constructor(
     private val clipboardManager: ClipboardManager,
 ) {
     private var server: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
@@ -48,12 +48,17 @@ actual class ConnectionManager(
 
 
     fun getServerUrl(): String {
-        val ipAddress = NetworkInterface.getNetworkInterfaces().toList()
-            .flatMap { it.inetAddresses.toList() }
-            .firstOrNull { !it.isLoopbackAddress && it.isSiteLocalAddress }
-            ?.hostAddress ?: "127.0.0.1"
-        return "ws://$ipAddress:${ConnectionConfig.DEFAULT_PORT}${ConnectionConfig.WS_PATH}"
+        return try {
+            val ipAddress = NetworkInterface.getNetworkInterfaces().toList()
+                .flatMap { it.inetAddresses.toList() }
+                .firstOrNull { !it.isLoopbackAddress && it.isSiteLocalAddress }
+                ?.hostAddress ?: throw  Exception("No suitable network interface found")
+            "ws://$ipAddress:${ConnectionConfig.DEFAULT_PORT}${ConnectionConfig.WS_PATH}"
+        } catch (e: Exception) {
+            throw Exception("Failed to determine server URL: ${e.message}")
+        }
     }
+
 
     actual suspend fun connect(serverUrl: String) {
         println("Starting server at ${getServerUrl()}")
@@ -92,7 +97,16 @@ actual class ConnectionManager(
                 }
             }.start(wait = false)
         } catch (e: Exception) {
-            handleStartupError(e)
+            when (e) {
+                is BindException -> {
+                    println("Port ${ConnectionConfig.DEFAULT_PORT} is already in use: ${e.message}")
+                    _connectionState.value = ConnectionState.Error("Port ${ConnectionConfig.DEFAULT_PORT} is already in use")
+                }
+                else -> {
+                    println("Failed to start server: ${e.message}")
+                    _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
+                }
+            }
         }
     }
 
@@ -125,19 +139,6 @@ actual class ConnectionManager(
     }
 
 
-
-    private fun handleStartupError(error: Exception) {
-        when (error) {
-            is BindException -> {
-                println("Port ${ConnectionConfig.DEFAULT_PORT} is already in use: ${error.message}")
-                _connectionState.value = ConnectionState.Error("Port ${ConnectionConfig.DEFAULT_PORT} is already in use")
-            }
-            else -> {
-                println("Failed to start server: ${error.message}")
-                _connectionState.value = ConnectionState.Error(error.message ?: "Unknown error")
-            }
-        }
-    }
 
 
     actual suspend fun disconnect() {

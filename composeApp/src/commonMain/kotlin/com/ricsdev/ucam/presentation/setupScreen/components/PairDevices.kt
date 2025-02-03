@@ -193,7 +193,10 @@ fun PairDevices(
                     }
                 }
                 PairingState.QrCode -> {
-                    PairQrCode(viewModel = viewModel)
+                    PairQrCode(
+                        viewModel = viewModel,
+                        onNext = onNext
+                    )
                 }
                 PairingState.PinCode -> {
                     PairPinCode()
@@ -227,7 +230,10 @@ fun PairDevices(
 }
 
 @Composable
-expect fun PairQrCode(viewModel: SetupViewModel)
+expect fun PairQrCode(
+    viewModel: SetupViewModel,
+    onNext: () -> Unit
+)
 
 @Composable
 fun PairPinCode() {

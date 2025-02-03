@@ -22,7 +22,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.OutputStream
 import java.nio.ByteBuffer
-import java.util.ArrayDeque
 
 class CameraConfig(private val context: Context) {
     private var camera: Camera? = null

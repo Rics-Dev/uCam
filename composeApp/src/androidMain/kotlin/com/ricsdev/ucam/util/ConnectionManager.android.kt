@@ -28,9 +28,9 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 
-actual class ConnectionManager(
+actual class ConnectionManager actual constructor(
     private val clipboardManager: ClipboardManager,
-    private val cameraConfig: CameraConfig,
+//    private val cameraConfig: CameraConfig,
 ) {
     private var client = createClient()
     private var session: DefaultClientWebSocketSession? = null
@@ -95,7 +95,7 @@ actual class ConnectionManager(
                             for (frame in incoming) {
                                 when (frame) {
                                     is Frame.Text -> handleTextFrame(frame)
-                                    is Frame.Binary -> handleBinaryFrame()
+//                                    is Frame.Binary -> handleBinaryFrame()
                                     is Frame.Close -> break
                                     is Frame.Ping -> send(Frame.Pong(frame.data))
                                     else -> { /* Handle other frame types if needed */ }
@@ -140,10 +140,10 @@ actual class ConnectionManager(
         }
     }
 
-    private fun handleBinaryFrame() {
-        val latency = System.currentTimeMillis() - lastFrameSentTime
-        cameraConfig.updateNetworkLatency(latency)
-    }
+//    private fun handleBinaryFrame() {
+//        val latency = System.currentTimeMillis() - lastFrameSentTime
+//        cameraConfig.updateNetworkLatency(latency)
+//    }
 
 
     actual suspend fun disconnect() {
