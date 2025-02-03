@@ -23,6 +23,7 @@ actual class ClipboardManager {
     private var clipboardScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var clipboardJob: Job? = null
     private var clipboardListenerActive = false
+    private var isInitialized = false
 
     private val _clipboardContent = MutableStateFlow<String?>(null)
     actual val clipboardContent = _clipboardContent.asStateFlow()
@@ -74,9 +75,11 @@ actual class ClipboardManager {
             clipboardJob = clipboardScope.launch {
                 clipboardContent.collect { content ->
                     try {
-                        if (content != null) {
+                        if (content != null && isInitialized) {
                             val message = ClipboardMessage(clipboardMessage = content)
                             session.send(Frame.Text(Json.encodeToString(ClipboardMessage.serializer(), message)))
+                        }else {
+                            isInitialized = true
                         }
                     } catch (e: Exception) {
                         println("Error sending clipboard content: ${e.message}")

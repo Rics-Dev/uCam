@@ -28,6 +28,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 
+//android
 actual class ConnectionManager actual constructor(
     private val clipboardManager: ClipboardManager,
 //    private val cameraConfig: CameraConfig,

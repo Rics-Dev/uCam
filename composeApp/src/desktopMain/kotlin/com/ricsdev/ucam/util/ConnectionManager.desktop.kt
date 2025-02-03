@@ -20,6 +20,7 @@ import java.net.BindException
 import java.net.NetworkInterface
 import kotlin.time.Duration
 
+//desktop
 actual class ConnectionManager actual constructor(
     private val clipboardManager: ClipboardManager,
 ) {
