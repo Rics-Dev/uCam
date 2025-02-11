@@ -101,6 +101,10 @@ kotlin {
 
                 implementation(libs.kotlinx.serialization.json)
 //                implementation(libs.logback.classic)
+
+                // https://mvnrepository.com/artifact/org.jmdns/jmdns
+                implementation("org.jmdns:jmdns:3.5.1")
+
             }
         }
 
@@ -156,11 +160,11 @@ kotlin {
 // Android configuration block
 android {
 
-    namespace = "com.ricsdev.ucam"
+    namespace = "com.ricsdev.uconnect"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.ricsdev.ucam"
+        applicationId = "com.ricsdev.uconnect"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -195,12 +199,22 @@ dependencies {
 // Desktop application configuration
 compose.desktop {
     application {
-        mainClass = "com.ricsdev.ucam.MainKt"
+        mainClass = "com.ricsdev.uconnect.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.ricsdev.ucam"
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage, TargetFormat.Pkg)
+            packageName = "com.ricsdev.uconnect"
             packageVersion = "1.0.0"
         }
+    }
+
+    application.buildTypes.release.proguard {
+        version = "7.6.0"
+        isEnabled = false  // false to disable proguard
+        optimize = true
+        obfuscate = true
+
+        // additional rule
+        configurationFiles.from(file("proguard-rules.pro"))
     }
 }

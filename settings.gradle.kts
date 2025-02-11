@@ -1,4 +1,4 @@
-rootProject.name = "uCam"
+rootProject.name = "uConnect"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
